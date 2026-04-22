@@ -101,6 +101,36 @@ def listar_hojas(path: str) -> list:
         return []
 
 
+def ask_hoja(hojas: list, label: str, default: str) -> str:
+    """
+    Pide el nombre de una hoja con validación.
+    Muestra las opciones numeradas para que el usuario pueda elegir por número o nombre.
+    """
+    print(f"\n  Hojas disponibles en {label}:")
+    for i, h in enumerate(hojas, 1):
+        marca = " ← (predeterminada)" if h == default else ""
+        print(f"    {i}. {h}{marca}")
+    print(f"  → Escribe el NOMBRE EXACTO de la hoja o su NÚMERO.")
+    print(f"  → Presiona Enter para usar la predeterminada: '{default}'")
+
+    while True:
+        resp = input("  Hoja: ").strip()
+        if resp == "":
+            return default
+        # Si escribió un número
+        if resp.isdigit():
+            idx = int(resp) - 1
+            if 0 <= idx < len(hojas):
+                return hojas[idx]
+            else:
+                print(f"  ✗ Número fuera de rango. Elige entre 1 y {len(hojas)}.")
+                continue
+        # Si escribió el nombre
+        if resp in hojas:
+            return resp
+        print(f"  ✗ '{resp}' no existe. Elige uno de: {hojas}")
+
+
 def modo_interactivo() -> dict:
     """
     Guía al usuario paso a paso para configurar la conciliación
@@ -110,7 +140,12 @@ def modo_interactivo() -> dict:
     print("  CONCILIADOR DE INVENTARIOS — Modo Interactivo")
     print("═" * 60)
     print("  Compara dos fuentes de inventario y detecta diferencias.")
-    print("  Presiona Enter para aceptar el valor entre [corchetes].\n")
+    print()
+    print("  INSTRUCCIONES:")
+    print("  • Preguntas (s/n) → escribe  s  o  n  y presiona Enter")
+    print("  • Preguntas con [valor] → presiona Enter para aceptar ese valor")
+    print("  • Selección de hoja → escribe el número o el nombre exacto")
+    print()
 
     cfg = {}
 
@@ -120,18 +155,19 @@ def modo_interactivo() -> dict:
         cfg["gen_path"] = ask("  Ruta del archivo (.xlsx, .xlsm, .csv)")
         if os.path.exists(cfg["gen_path"]):
             break
-        print(f"  ✗ Archivo no encontrado. Intenta de nuevo.")
+        print("  ✗ Archivo no encontrado. Verifica la ruta e intenta de nuevo.")
 
     hojas_gen = listar_hojas(cfg["gen_path"])
     if hojas_gen:
-        print(f"  Hojas disponibles: {hojas_gen}")
-        cfg["gen_sheet"] = ask("  Nombre de la hoja", default=hojas_gen[0])
+        cfg["gen_sheet"] = ask_hoja(hojas_gen, "Fuente 1", default=hojas_gen[0])
+        print(f"  ✓ Hoja seleccionada: '{cfg['gen_sheet']}'")
     else:
         cfg["gen_sheet"] = None  # CSV — sin hojas
 
     # ── Archivo CLIENTES ─────────────────────────────────────
     print("\n─── FUENTE 2: Inventario Clientes (sistema/partidas) ───")
-    mismo = ask("  ¿Es el mismo archivo que la Fuente 1? (s/n)", default="n").lower()
+    print("  ¿Las dos fuentes están en el MISMO archivo?")
+    mismo = ask("  Mismo archivo (s/n)", default="n").lower()
 
     if mismo == "s":
         cfg["cli_path"] = cfg["gen_path"]
@@ -141,25 +177,27 @@ def modo_interactivo() -> dict:
             cfg["cli_path"] = ask("  Ruta del archivo (.xlsx, .xlsm, .csv)")
             if os.path.exists(cfg["cli_path"]):
                 break
-            print(f"  ✗ Archivo no encontrado. Intenta de nuevo.")
+            print("  ✗ Archivo no encontrado. Verifica la ruta e intenta de nuevo.")
         hojas_cli = listar_hojas(cfg["cli_path"])
 
     if hojas_cli:
-        print(f"  Hojas disponibles: {hojas_cli}")
         default_cli = hojas_cli[1] if len(hojas_cli) > 1 else hojas_cli[0]
-        cfg["cli_sheet"] = ask("  Nombre de la hoja", default=default_cli)
+        cfg["cli_sheet"] = ask_hoja(hojas_cli, "Fuente 2", default=default_cli)
+        print(f"  ✓ Hoja seleccionada: '{cfg['cli_sheet']}'")
     else:
         cfg["cli_sheet"] = None
 
     # ── Columna clave ─────────────────────────────────────────
     print("\n─── COLUMNA CLAVE DE COMPARACIÓN ───")
-    print("  (La columna que identifica cada producto: UPC, SKU, EAN, Código, etc.)")
+    print("  Es la columna que identifica cada producto: UPC, SKU, EAN, Código, etc.")
+    print("  Debe existir en AMBAS fuentes con el mismo nombre.")
     cfg["key_col"] = ask("  Nombre de la columna clave", default="UPC")
 
     # ── Columna de cantidad ───────────────────────────────────
     print("\n─── COLUMNA DE CANTIDAD ───")
-    cfg["total_col_gen"] = ask("  Nombre de la columna de cantidad en Fuente 1", default="TOTAL FISICO")
-    cfg["total_col_cli"] = ask("  Nombre de la columna de cantidad en Fuente 2", default="TOTAL FISICO")
+    print("  La columna con el total de piezas/unidades en cada fuente.")
+    cfg["total_col_gen"] = ask("  Columna de cantidad en Fuente 1", default="TOTAL FISICO")
+    cfg["total_col_cli"] = ask("  Columna de cantidad en Fuente 2", default="TOTAL FISICO")
 
     # ── Salida ────────────────────────────────────────────────
     print("\n─── ARCHIVO DE SALIDA ───")
