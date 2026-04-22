@@ -1,0 +1,19 @@
+# Datos confidenciales — nunca subir
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+
+# Resultados generados
+conciliacion_resultado.xlsx
+salida_*.xlsx
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+
+# Sistema
+.DS_Store
+Thumbs.db
